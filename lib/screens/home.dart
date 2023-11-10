@@ -9,7 +9,9 @@ import 'package:socket_test/providers/home.dart';
 
 class HomeScreen extends StatefulWidget {
   final String username;
-  const HomeScreen({Key? key, required this.username}) : super(key: key);
+  final String roomID;
+  const HomeScreen({Key? key, required this.username, required this.roomID})
+      : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -22,9 +24,18 @@ class _HomeScreenState extends State<HomeScreen> {
   _sendMessage() {
     _socket.emit('message', {
       'message': _messageInputController.text.trim(),
-      'sender': widget.username
+      'sender': widget.username,
+      'roomID': widget.roomID
     });
     _messageInputController.clear();
+  }
+
+  _joinRoom() {
+    _socket.emit('subscribe', widget.roomID);
+  }
+
+  _leaveRoom() {
+    _socket.emit('unsubscribe', widget.roomID);
   }
 
   _connectSocket() {
@@ -39,21 +50,32 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _disconnectSocket() {
+    if (_socket.connected) _socket.disconnect();
+  }
+
   @override
   void initState() {
     super.initState();
+    init();
     //Important: If your server is running on localhost and you are testing your app on Android then replace http://localhost:3000 with http://10.0.2.2:3000
+  }
+
+  void init() {
     _socket = IO.io(
       Platform.isIOS ? 'http://localhost:3000' : 'http://10.0.2.2:3000',
-      IO.OptionBuilder().setTransports(['websocket']).setQuery(
-          {'username': widget.username}).build(),
+      IO.OptionBuilder().setTransports(['websocket']).enableForceNew().build(),
     );
     _connectSocket();
+    _joinRoom();
   }
 
   @override
   void dispose() {
     _messageInputController.dispose();
+    // _socket.disconnect();
+    _disconnectSocket();
+    _socket.dispose();
     super.dispose();
   }
 
@@ -62,6 +84,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Message Room'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            _leaveRoom();
+            Navigator.of(context).pop();
+          },
+        ),
       ),
       body: Column(
         children: [
@@ -76,28 +105,31 @@ class _HomeScreenState extends State<HomeScreen> {
                         ? WrapAlignment.end
                         : WrapAlignment.start,
                     children: [
-                      Card(
-                        color: message.senderUsername == widget.username
-                            ? Theme.of(context).primaryColorLight
-                            : Colors.white,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment:
-                                message.senderUsername == widget.username
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
-                            children: [
-                              Text(message.message),
-                              Text(
-                                DateFormat('hh:mm a').format(message.sentAt),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
+                      Column(children: [
+                        Text(message.senderUsername),
+                        Card(
+                          color: message.senderUsername == widget.username
+                              ? Theme.of(context).primaryColorLight
+                              : Colors.white,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment:
+                                  message.senderUsername == widget.username
+                                      ? CrossAxisAlignment.end
+                                      : CrossAxisAlignment.start,
+                              children: [
+                                Text(message.message),
+                                Text(
+                                  DateFormat('hh:mm a').format(message.sentAt),
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      )
+                      ])
                     ],
                   );
                 },

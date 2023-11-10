@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:socket_test/providers/home.dart';
 import 'package:socket_test/providers/login.dart';
 import 'package:socket_test/screens/home.dart';
+import 'package:socket_test/screens/list_room.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -29,9 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(
           builder: (_) => ChangeNotifierProvider(
             create: (context) => HomeProvider(),
-            child: HomeScreen(
-              username: _usernameController.text.trim(),
-            ),
+            child: ListRoomPage(username:  _usernameController.text.trim(),),
           ),
         ),
       );
